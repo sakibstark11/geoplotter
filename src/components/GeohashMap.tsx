@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import mapboxgl from 'mapbox-gl';
 import geohash from 'ngeohash';
@@ -6,15 +6,15 @@ import geohash from 'ngeohash';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const GeohashMap = () => {
-  const mapContainerRef = useRef();
-  const mapRef = useRef();
+  const mapContainerRef = useRef<HTMLDivElement>();
+  const mapRef = useRef<mapboxgl.Map>();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_PUBLIC_KEY;
+    mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_PUBLIC_KEY as string;
 
     mapRef.current = new mapboxgl.Map({
-      container: mapContainerRef.current,
+      container: mapContainerRef.current as HTMLDivElement,
       center: [90.4125, 23.8103],
       zoom: 9,
     });
@@ -37,7 +37,7 @@ const GeohashMap = () => {
 
       new mapboxgl.Marker()
         .setLngLat([longitude, latitude])
-        .addTo(mapRef.current);
+        .addTo(mapRef.current as mapboxgl.Map);
 
       new mapboxgl.Popup({
         closeOnClick: false,
@@ -45,14 +45,14 @@ const GeohashMap = () => {
       })
         .setLngLat([longitude, latitude])
         .setHTML(`<text style="color: red;">${hash}</text>`)
-        .addTo(mapRef.current);
+        .addTo(mapRef.current as mapboxgl.Map);
     });
 
   };
   return (
     <div
       style={{ height: '100vh', width: '100vw' }}
-      ref={mapContainerRef}
+      ref={mapContainerRef as React.RefObject<HTMLDivElement>}
       className="map-container"
     />
   );
