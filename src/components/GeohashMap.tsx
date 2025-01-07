@@ -11,7 +11,7 @@ const GeohashMap = () => {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    mapboxgl.accessToken = process.env.VITE_MAPBOX_PUBLIC_KEY as string;
+    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_PUBLIC_KEY as string;
 
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current as HTMLDivElement,
