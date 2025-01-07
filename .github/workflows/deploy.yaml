@@ -28,7 +28,7 @@ jobs:
 
             - name: Build Pages
               env:
-                  REACT_APP_MAPBOX_PUBLIC_KEY: ${{ secrets.REACT_APP_MAPBOX_PUBLIC_KEY }}
+                  VITE_MAPBOX_PUBLIC_KEY: ${{ secrets.VITE_MAPBOX_PUBLIC_KEY }}
               run: |
                   npm install
                   npm run build
