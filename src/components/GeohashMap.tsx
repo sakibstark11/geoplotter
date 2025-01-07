@@ -35,10 +35,6 @@ const GeohashMap = () => {
     geohashArray.forEach((hash) => {
       const { latitude, longitude } = geohash.decode(hash);
 
-      new mapboxgl.Marker()
-        .setLngLat([longitude, latitude])
-        .addTo(mapRef.current as mapboxgl.Map);
-
       new mapboxgl.Popup({
         closeOnClick: false,
         closeButton: false,

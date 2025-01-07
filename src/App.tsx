@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 function App() {
 
   return (
-    <Router>
+    <Router basename={import.meta.env.PROD ? '/geoplotter' : '/'}>
     <Routes>
       <Route path="/" element={<GeohashMap />} />
     </Routes>
