@@ -96,9 +96,11 @@ const GeohashMap = () => {
         ? searchParams.get("geohashes")!.split(",")
         : [];
     const url = searchParams.get("url")!;
-    fetchUrl(url).then((data) => {
-      geohashArray.push(...data.slice(0, -1).split("\n"));
-    });
+    if (url) {
+      fetchUrl(url).then((data) => {
+        geohashArray.push(...data.slice(0, -1).split("\n"));
+      });
+    }
 
     mapRef.current.on("load", () => {
       if (geohashArray.length) {
