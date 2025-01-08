@@ -89,6 +89,7 @@ const GeohashMap = () => {
       container: mapContainerRef.current as HTMLDivElement,
       center: [90.4125, 23.8103],
       zoom: 17,
+      pitch: 45
     });
 
     const geohashArray =
