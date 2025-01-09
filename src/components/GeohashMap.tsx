@@ -1,4 +1,4 @@
-import { LegacyRef, useCallback, useEffect, useRef } from "react";
+import { LegacyRef, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import mapboxgl from "mapbox-gl";
 import geohash from "ngeohash";
@@ -9,6 +9,8 @@ const GeohashMap = () => {
   const mapContainerRef = useRef<HTMLDivElement>();
   const mapRef = useRef<mapboxgl.Map>();
   const [searchParams] = useSearchParams();
+  const [geohashCount, setGeohashCount] = useState(0);
+  const refreshInterval = searchParams.get("timer");
 
   const decodeGeohashToFeature = (hash: string) => {
     const [minLat, minLon, maxLat, maxLon] = geohash.decode_bbox(hash);
@@ -86,7 +88,6 @@ const GeohashMap = () => {
   const refreshMap = useCallback(async () => {
     if (!mapRef.current) return;
 
-    // Extract geohashes and URL from searchParams
     const geohashArray = searchParams.get("geohashes")?.split(",") || [];
     const url = searchParams.get("url");
 
@@ -96,6 +97,7 @@ const GeohashMap = () => {
     }
 
     if (geohashArray.length > 0) {
+      setGeohashCount(geohashArray.length);
       drawGeohashBoundingBoxes(geohashArray);
     }
   }, [drawGeohashBoundingBoxes, searchParams]);
@@ -113,7 +115,6 @@ const GeohashMap = () => {
 
     mapRef.current.on("load", refreshMap);
 
-    const refreshInterval = searchParams.get("timer");
     if (refreshInterval) {
       const refreshIntervalInMS =
         parseInt(searchParams.get("timer") ?? "0", 10) * 1000;
@@ -129,11 +130,54 @@ const GeohashMap = () => {
   }, [refreshMap, searchParams]);
 
   return (
-    <div
-      ref={mapContainerRef as LegacyRef<HTMLDivElement>}
-      style={{ height: "100vh", width: "100vw" }}
-      className="map-container"
-    />
+    <>
+      <div
+        ref={mapContainerRef as LegacyRef<HTMLDivElement>}
+        style={{ height: "100vh", width: "100vw" }}
+        className="map-container"
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 10,
+          left: 10,
+          background: "white",
+          padding: "5px",
+          borderRadius: "5px",
+          color: "black",
+        }}
+      >
+        <strong
+          style={{
+            color: "red",
+          }}
+        >
+          {geohashCount}{" "}
+        </strong>{" "}
+        locations displayed
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          top: 46,
+          left: 10,
+          background: "white",
+          padding: "5px",
+          borderRadius: "5px",
+          color: "black",
+        }}
+      >
+        Refreshing every{" "}
+        <strong
+          style={{
+            color: "red",
+          }}
+        >
+          {refreshInterval}{" "}
+        </strong>
+        seconds
+      </div>
+    </>
   );
 };
 
