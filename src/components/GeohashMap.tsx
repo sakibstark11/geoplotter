@@ -1,7 +1,6 @@
-import { useEffect, useRef } from "react";
+import { LegacyRef, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import mapboxgl from "mapbox-gl";
-import { FeatureCollection, GeoJsonProperties, Geometry } from "geojson";
 import geohash from "ngeohash";
 
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -11,56 +10,54 @@ const GeohashMap = () => {
   const mapRef = useRef<mapboxgl.Map>();
   const [searchParams] = useSearchParams();
 
-  const drawGeohashBoundingBoxes = (geohashes: string[]) => {
-    const features = geohashes.map((hash) => {
-      const [minLat, minLon, maxLat, maxLon] = geohash.decode_bbox(hash);
-      const { latitude, longitude } = geohash.decode(hash);
+  const decodeGeohashToFeature = (hash: string) => {
+    const [minLat, minLon, maxLat, maxLon] = geohash.decode_bbox(hash);
+    const { latitude, longitude } = geohash.decode(hash);
 
-      new mapboxgl.Popup({
-        closeOnClick: false,
-        closeButton: false,
-      })
-        .setLngLat([longitude, latitude])
-        .setHTML(`<text style="color: red;">${hash}</text>`)
-        .addTo(mapRef.current as mapboxgl.Map);
+    // Add popup
+    new mapboxgl.Popup({ closeOnClick: false, closeButton: false })
+      .setLngLat([longitude, latitude])
+      .setHTML(`<text style="color: red;">${hash}</text>`)
+      .addTo(mapRef.current!);
 
-      return {
-        type: "Feature",
-        geometry: {
-          type: "Polygon",
-          coordinates: [
-            [
-              [minLon, minLat],
-              [maxLon, minLat],
-              [maxLon, maxLat],
-              [minLon, maxLat],
-              [minLon, minLat],
-            ],
+    // Return GeoJSON feature
+    return {
+      type: "Feature",
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [minLon, minLat],
+            [maxLon, minLat],
+            [maxLon, maxLat],
+            [minLon, maxLat],
+            [minLon, minLat],
           ],
-        },
-        properties: {
-          geohash: hash,
-        },
-      };
-    });
+        ],
+      },
+      properties: { geohash: hash },
+    };
+  };
 
+  const drawGeohashBoundingBoxes = useCallback((geohashes: string[]) => {
+    const features = geohashes.map(decodeGeohashToFeature);
     const geoJson = {
       type: "FeatureCollection",
       features,
-    };
+    } as GeoJSON.FeatureCollection;
 
-    console.log(geoJson);
+    const sourceId = "geohash-bboxes";
 
-    if (!mapRef.current?.getSource("geohash-bboxes")) {
-      mapRef.current?.addSource("geohash-bboxes", {
+    if (!mapRef.current?.getSource(sourceId)) {
+      mapRef.current?.addSource(sourceId, {
         type: "geojson",
-        data: geoJson as FeatureCollection<Geometry, GeoJsonProperties>,
+        data: geoJson,
       });
 
       mapRef.current?.addLayer({
-        id: "geohash-bboxes-fill",
+        id: `${sourceId}-fill`,
         type: "fill",
-        source: "geohash-bboxes",
+        source: sourceId,
         paint: {
           "fill-color": "#ff0000",
           "fill-opacity": 0.4,
@@ -68,52 +65,73 @@ const GeohashMap = () => {
       });
     } else {
       const source = mapRef.current.getSource(
-        "geohash-bboxes"
+        sourceId
       ) as mapboxgl.GeoJSONSource;
-      source.setData(geoJson as FeatureCollection<Geometry, GeoJsonProperties>);
+      source.setData(geoJson);
+    }
+  }, []);
+
+  const fetchGeohashesFromUrl = async (url: string) => {
+    try {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error("Failed to fetch data");
+      const data = await response.text();
+      return data.trim().split("\n");
+    } catch (error) {
+      alert(error);
+      return [];
     }
   };
 
-  const fetchUrl = async (url: string) => {
-    const response = await fetch(url);
-    if (!response.ok) {
-      alert("Failed to fetch data");
+  const refreshMap = useCallback(async () => {
+    if (!mapRef.current) return;
+
+    // Extract geohashes and URL from searchParams
+    const geohashArray = searchParams.get("geohashes")?.split(",") || [];
+    const url = searchParams.get("url");
+
+    if (url) {
+      const fetchedGeohashes = await fetchGeohashesFromUrl(url);
+      geohashArray.push(...fetchedGeohashes);
     }
-    return await response.text();
-  };
+
+    if (geohashArray.length > 0) {
+      drawGeohashBoundingBoxes(geohashArray);
+    }
+  }, [drawGeohashBoundingBoxes, searchParams]);
 
   useEffect(() => {
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_PUBLIC_KEY as string;
+    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_PUBLIC_KEY;
 
     mapRef.current = new mapboxgl.Map({
-      container: mapContainerRef.current as HTMLDivElement,
+      container: mapContainerRef.current!,
+      style: "mapbox://styles/mapbox/streets-v11",
       center: [90.4125, 23.8103],
       zoom: 17,
-      pitch: 45
+      pitch: 45,
     });
 
-    const geohashArray =
-      searchParams.get("geohashes") !== null
-        ? searchParams.get("geohashes")!.split(",")
-        : [];
-    const url = searchParams.get("url")!;
-    if (url) {
-      fetchUrl(url).then((data) => {
-        geohashArray.push(...data.slice(0, -1).split("\n"));
-      });
+    mapRef.current.on("load", refreshMap);
+
+    const refreshInterval = searchParams.get("timer");
+    if (refreshInterval) {
+      const refreshIntervalInMS =
+        parseInt(searchParams.get("timer") ?? "0", 10) * 1000;
+      const refreshIntervalId = setInterval(refreshMap, refreshIntervalInMS);
+
+      return () => {
+        mapRef.current?.remove();
+        if (refreshIntervalId) {
+          clearInterval(refreshIntervalId);
+        }
+      };
     }
-
-    mapRef.current.on("load", () => {
-      if (geohashArray.length) {
-        drawGeohashBoundingBoxes(geohashArray);
-      }
-    });
-  }, [searchParams]);
+  }, [refreshMap, searchParams]);
 
   return (
     <div
+      ref={mapContainerRef as LegacyRef<HTMLDivElement>}
       style={{ height: "100vh", width: "100vw" }}
-      ref={mapContainerRef as React.RefObject<HTMLDivElement>}
       className="map-container"
     />
   );
