@@ -10,7 +10,7 @@ const GeohashMap = () => {
   const mapRef = useRef<mapboxgl.Map>();
   const [searchParams] = useSearchParams();
   const [geohashCount, setGeohashCount] = useState(0);
-  const refreshInterval = searchParams.get("timer");
+  const refreshInterval = searchParams.get("timer") ?? 0;
 
   const decodeGeohashToFeature = (hash: string) => {
     const [minLat, minLon, maxLat, maxLon] = geohash.decode_bbox(hash);
@@ -114,8 +114,7 @@ const GeohashMap = () => {
     mapRef.current.on("load", refreshMap);
 
     if (refreshInterval) {
-      const refreshIntervalInMS =
-        parseInt(searchParams.get("timer") ?? "0", 10) * 1000;
+      const refreshIntervalInMS = parseInt(refreshInterval, 10) * 1000;
       const refreshIntervalId = setInterval(refreshMap, refreshIntervalInMS);
 
       return () => {
@@ -154,27 +153,29 @@ const GeohashMap = () => {
         </strong>{" "}
         locations displayed
       </div>
-      <div
-        style={{
-          position: "absolute",
-          top: 46,
-          left: 10,
-          background: "white",
-          padding: "5px",
-          borderRadius: "5px",
-          color: "black",
-        }}
-      >
-        Refreshing every{" "}
-        <strong
+      {refreshInterval > 0 && (
+        <div
           style={{
-            color: "red",
+            position: "absolute",
+            top: 46,
+            left: 10,
+            background: "white",
+            padding: "5px",
+            borderRadius: "5px",
+            color: "black",
           }}
         >
-          {refreshInterval}{" "}
-        </strong>
-        seconds
-      </div>
+          Refreshing every{" "}
+          <strong
+            style={{
+              color: "red",
+            }}
+          >
+            {refreshInterval}{" "}
+          </strong>
+          seconds
+        </div>
+      )}
     </>
   );
 };
