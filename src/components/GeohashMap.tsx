@@ -108,7 +108,7 @@ const GeohashMap = () => {
         drawGeohashBoundingBoxes(geohashArray);
       }
     });
-  }, []);
+  }, [searchParams]);
 
   return (
     <div
