@@ -16,13 +16,11 @@ const GeohashMap = () => {
     const [minLat, minLon, maxLat, maxLon] = geohash.decode_bbox(hash);
     const { latitude, longitude } = geohash.decode(hash);
 
-    // Add popup
     new mapboxgl.Popup({ closeOnClick: false, closeButton: false })
       .setLngLat([longitude, latitude])
       .setHTML(`<text style="color: red;">${hash}</text>`)
       .addTo(mapRef.current!);
 
-    // Return GeoJSON feature
     return {
       type: "Feature",
       geometry: {
@@ -127,7 +125,7 @@ const GeohashMap = () => {
         }
       };
     }
-  }, [refreshMap, searchParams]);
+  }, [refreshInterval, refreshMap, searchParams]);
 
   return (
     <>
