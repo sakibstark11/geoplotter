@@ -9,8 +9,10 @@ const GeohashMap = () => {
   const mapContainerRef = useRef<HTMLDivElement>();
   const mapRef = useRef<mapboxgl.Map>();
   const [searchParams] = useSearchParams();
+  const refreshIntervalSeconds = Number(searchParams.get("timer") ?? 0);
+  const url = searchParams.get("url");
+  const mapLabel = searchParams.get("label");
   const [geohashCount, setGeohashCount] = useState(0);
-  const refreshInterval = searchParams.get("timer") ?? 0;
 
   const decodeGeohashToFeature = (hash: string) => {
     const [minLat, minLon, maxLat, maxLon] = geohash.decode_bbox(hash);
@@ -85,9 +87,7 @@ const GeohashMap = () => {
 
   const refreshMap = useCallback(async () => {
     if (!mapRef.current) return;
-
     const geohashArray = searchParams.get("geohashes")?.split(",") || [];
-    const url = searchParams.get("url");
 
     if (url) {
       const fetchedGeohashes = await fetchGeohashesFromUrl(url);
@@ -98,7 +98,7 @@ const GeohashMap = () => {
       setGeohashCount(geohashArray.length);
       drawGeohashBoundingBoxes(geohashArray);
     }
-  }, [drawGeohashBoundingBoxes, searchParams]);
+  }, [drawGeohashBoundingBoxes, searchParams, url]);
 
   useEffect(() => {
     mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_PUBLIC_KEY;
@@ -107,14 +107,14 @@ const GeohashMap = () => {
       container: mapContainerRef.current!,
       style: "mapbox://styles/mapbox/streets-v11",
       center: [90.4125, 23.8103],
-      zoom: 17,
-      pitch: 45,
+      zoom: 18,
+      maxPitch: 0,
     });
 
     mapRef.current.on("load", refreshMap);
 
-    if (refreshInterval) {
-      const refreshIntervalInMS = parseInt(refreshInterval, 10) * 1000;
+    if (refreshIntervalSeconds) {
+      const refreshIntervalInMS = refreshIntervalSeconds * 1000;
       const refreshIntervalId = setInterval(refreshMap, refreshIntervalInMS);
 
       return () => {
@@ -124,59 +124,47 @@ const GeohashMap = () => {
         }
       };
     }
-  }, [refreshInterval, refreshMap, searchParams]);
+  }, [refreshIntervalSeconds, refreshMap, searchParams]);
 
   return (
-    <>
-      <div
-        ref={mapContainerRef as LegacyRef<HTMLDivElement>}
-        style={{ height: "100vh", width: "100vw" }}
-        className="map-container"
-      />
+    <div
+      style={{ height: "100vh", width: "100vw" }}
+      ref={mapContainerRef}
+      className="map-container"
+    >
       <div
         style={{
+          display: "flex",
+          flexDirection: "column",
           position: "absolute",
           top: 10,
           left: 10,
           background: "white",
-          padding: "5px",
+          padding: "10px",
           borderRadius: "5px",
+          boxShadow: "0 2px 5px rgba(0, 0, 0, 0.2)",
           color: "black",
+          zIndex: 1,
         }}
       >
-        <strong
-          style={{
-            color: "red",
-          }}
-        >
-          {geohashCount}{" "}
-        </strong>{" "}
-        locations displayed
-      </div>
-      {refreshInterval > 0 && (
-        <div
-          style={{
-            position: "absolute",
-            top: 46,
-            left: 10,
-            background: "white",
-            padding: "5px",
-            borderRadius: "5px",
-            color: "black",
-          }}
-        >
-          Refreshing every{" "}
-          <strong
-            style={{
-              color: "red",
-            }}
-          >
-            {refreshInterval}{" "}
-          </strong>
-          seconds
+        {mapLabel && (
+          <div>
+            <strong style={{ color: "red" }}>{mapLabel}</strong>
+          </div>
+        )}
+        <div>
+          <strong style={{ color: "red" }}>{geohashCount}</strong> locations
+          displayed
         </div>
-      )}
-    </>
+        {refreshIntervalSeconds > 0 && (
+          <div>
+            Refreshing every{" "}
+            <strong style={{ color: "red" }}>{refreshIntervalSeconds}</strong>{" "}
+            seconds
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
