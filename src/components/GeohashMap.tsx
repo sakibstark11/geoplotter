@@ -129,7 +129,7 @@ const GeohashMap = () => {
   return (
     <div
       style={{ height: "100vh", width: "100vw" }}
-      ref={mapContainerRef}
+      ref={mapContainerRef as LegacyRef<HTMLDivElement>}
       className="map-container"
     >
       <div
