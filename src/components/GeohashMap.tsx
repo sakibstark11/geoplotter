@@ -12,7 +12,9 @@ const GeoHashMap = () => {
   const refreshIntervalSeconds = Number(searchParams.get("timer") ?? 0);
   const [geoHashCount, setGeoHashCount] = useState(0);
 
-  const decodeGeoHashToFeature = (hash: string) => {
+  const decodeGeoHashToFeature = (
+    hash: string
+  ): GeoJSON.Feature<GeoJSON.Geometry> => {
     const [minLat, minLon, maxLat, maxLon] = geoHash.decode_bbox(hash);
     return {
       type: "Feature",
@@ -28,6 +30,7 @@ const GeoHashMap = () => {
           ],
         ],
       },
+      properties: null,
     };
   };
 
@@ -38,14 +41,18 @@ const GeoHashMap = () => {
           const { latitude, longitude } = geoHash.decode(hash);
           new mapboxgl.Popup({ closeOnClick: false, closeButton: false })
             .setLngLat([longitude, latitude])
-            .setHTML(`<text style="color: ${color}; font-weight: bold">${hash}</text>`)
+            .setHTML(
+              `<text style="color: ${color}; font-weight: bold">${hash}</text>`
+            )
             .addTo(mapRef.current!);
+
           return decodeGeoHashToFeature(hash);
         });
-        const geoJson = {
+
+        const geoJson: GeoJSON.FeatureCollection<GeoJSON.Geometry> = {
           type: "FeatureCollection",
           features,
-        } as GeoJSON.FeatureCollection;
+        };
 
         const sourceId = `geoHash-bboxes-${id}`;
         if (!mapRef.current?.getSource(sourceId)) {
@@ -101,7 +108,7 @@ const GeoHashMap = () => {
       );
       drawGeoHashBoundingBoxes(
         fetchedGeoHashes.map((arr, index) => ({
-          color: `#${colors[index]}`,
+          color: `#${colors[index] ?? "FF0000"}`,
           geoHashes: arr,
           id: `url-${index}`,
         }))
@@ -123,7 +130,6 @@ const GeoHashMap = () => {
       container: mapContainerRef.current!,
       center: [90.4125, 23.8103],
       zoom: 18,
-      maxPitch: 0,
     });
 
     mapRef.current.on("load", refreshMap);
