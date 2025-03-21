@@ -12,70 +12,34 @@ const GeoHashMap = () => {
   const refreshIntervalSeconds = Number(searchParams.get("timer") ?? 0);
   const [geoHashCount, setGeoHashCount] = useState(0);
 
-  const decodeGeoHashToFeature = (
-    hash: string
-  ): GeoJSON.Feature<GeoJSON.Geometry> => {
-    const [minLat, minLon, maxLat, maxLon] = geoHash.decode_bbox(hash);
-    return {
-      type: "Feature",
-      geometry: {
-        type: "Polygon",
-        coordinates: [
-          [
-            [minLon, minLat],
-            [maxLon, minLat],
-            [maxLon, maxLat],
-            [minLon, maxLat],
-            [minLon, minLat],
-          ],
-        ],
-      },
-      properties: null,
-    };
-  };
-
   const drawGeoHashBoundingBoxes = useCallback(
     (geoHashes: { color: string; geoHashes: string[]; id: string }[]) => {
-      geoHashes.forEach(({ geoHashes, color, id }) => {
-        const features = geoHashes.map((hash) => {
-          const { latitude, longitude } = geoHash.decode(hash);
-          new mapboxgl.Popup({ closeOnClick: false, closeButton: false })
-            .setLngLat([longitude, latitude])
-            .setHTML(
-              `<text style="color: ${color}; font-weight: bold">${hash}</text>`
-            )
-            .addTo(mapRef.current!);
+      const groupedGeoHashes = geoHashes
+        .flatMap(({ geoHashes, color }) =>
+          geoHashes.map((hash) => ({
+            hash,
+            color,
+            ...geoHash.decode(hash),
+          }))
+        )
+        .reduce((acc, { hash, color, latitude, longitude }) => {
+          const key = `${hash}-${color}`;
+          if (!acc[key]) {
+            acc[key] = { color, count: 0, lat: latitude, lng: longitude };
+          }
+          acc[key].count += 1;
+          return acc;
+        }, {} as Record<string, { color: string; count: number; lat: number; lng: number }>);
 
-          return decodeGeoHashToFeature(hash);
-        });
+      Object.values(groupedGeoHashes).forEach(({ color, count, lat, lng }) => {
+        new mapboxgl.Popup({
+          closeOnClick: false,
+          closeButton: false,
+        })
+          .setHTML(`<strong style="color: ${color}">${count}</strong>`)
+          .setLngLat([lng, lat])
+          .addTo(mapRef.current!)
 
-        const geoJson: GeoJSON.FeatureCollection<GeoJSON.Geometry> = {
-          type: "FeatureCollection",
-          features,
-        };
-
-        const sourceId = `geoHash-bboxes-${id}`;
-        if (!mapRef.current?.getSource(sourceId)) {
-          mapRef.current?.addSource(sourceId, {
-            type: "geojson",
-            data: geoJson,
-          });
-
-          mapRef.current?.addLayer({
-            id: `${sourceId}-fill`,
-            type: "fill",
-            source: sourceId,
-            paint: {
-              "fill-color": color,
-              "fill-opacity": 0.4,
-            },
-          });
-        } else {
-          const source = mapRef.current.getSource(
-            sourceId
-          ) as mapboxgl.GeoJSONSource;
-          source.setData(geoJson);
-        }
       });
     },
     []
@@ -84,11 +48,8 @@ const GeoHashMap = () => {
   const fetchGeoHashesFromUrl = async (url: string) => {
     try {
       const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) throw new Error("Failed to fetch data");
-      const data = await response.text();
-      return data.trim().split("\n");
-    } catch (error) {
-      console.error(error);
+      return response.ok ? (await response.text()).trim().split("\n") : [];
+    } catch {
       return [];
     }
   };
@@ -129,10 +90,25 @@ const GeoHashMap = () => {
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current!,
       center: [90.4125, 23.8103],
-      zoom: 18,
+      zoom: 10,
     });
+    mapRef.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     mapRef.current.on("load", refreshMap);
+
+    const centerMarker = new mapboxgl.Marker({ color: "orange" })
+      .setLngLat(mapRef.current.getCenter())
+      .addTo(mapRef.current);
+
+    const updateCenterMarker = () => {
+      if (mapRef.current) {
+        const center = mapRef.current.getCenter();
+        centerMarker.setLngLat(center);
+        return center
+      }
+    };
+
+    mapRef.current.on("move", updateCenterMarker);
 
     if (refreshIntervalSeconds) {
       const refreshIntervalInMS = refreshIntervalSeconds * 1000;
