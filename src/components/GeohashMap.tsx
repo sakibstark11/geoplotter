@@ -14,38 +14,32 @@ const GeoHashMap = () => {
 
   const drawGeoHashBoundingBoxes = useCallback(
     (geoHashes: { color: string; geoHashes: string[]; id: string }[]) => {
-      document.querySelectorAll('.mapboxgl-popup').forEach((popup) => popup.remove());
+      const geoHashMap = new Map<string, { color: string; count: number; lat: number; lng: number }>();
 
-      const groupedGeoHashes = geoHashes
-        .flatMap(({ geoHashes, color }) =>
-          geoHashes.map((hash) => ({
-            hash,
-            color,
-            ...geoHash.decode(hash),
-          }))
-        )
-        .reduce((acc, { hash, color, latitude, longitude }) => {
+      geoHashes.forEach(({ geoHashes, color }) => {
+        geoHashes.forEach((hash) => {
+          const { latitude, longitude } = geoHash.decode(hash);
           const key = `${hash}-${color}`;
-          if (!acc[key]) {
-            acc[key] = { color, count: 0, lat: latitude, lng: longitude };
-          }
-          acc[key].count += 1;
-          return acc;
-        }, {} as Record<string, { color: string; count: number; lat: number; lng: number }>);
 
-      Object.values(groupedGeoHashes).forEach(({ color, count, lat, lng }) => {
-        new mapboxgl.Popup({
-          closeOnClick: false,
-          closeButton: false,
-        })
+          if (!geoHashMap.has(key)) {
+            geoHashMap.set(key, { color, count: 0, lat: latitude, lng: longitude });
+          }
+
+          geoHashMap.get(key)!.count += 1;
+        });
+      });
+
+      geoHashMap.forEach(({ color, count, lat, lng }) => {
+        new mapboxgl.Popup({ closeOnClick: false, closeButton: false })
           .setHTML(`<strong style="color: ${color}">${count}</strong>`)
           .setLngLat([lng, lat])
-          .addTo(mapRef.current!)
-
+          .addTo(mapRef.current!);
       });
     },
     []
   );
+
+
 
   const fetchGeoHashesFromUrl = async (url: string) => {
     try {
@@ -58,6 +52,8 @@ const GeoHashMap = () => {
 
   const refreshMap = useCallback(async () => {
     if (!mapRef.current) return;
+    document.querySelectorAll('.mapboxgl-popup').forEach((popup) => popup.remove());
+
     const urls = searchParams.get("urls")?.split(",") || [];
     const colors = searchParams.get("colors")?.split(",") || [];
     const geoHashes = searchParams.get("geohashes")?.split(",") || [];
