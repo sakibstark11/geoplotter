@@ -14,6 +14,8 @@ const GeoHashMap = () => {
 
   const drawGeoHashBoundingBoxes = useCallback(
     (geoHashes: { color: string; geoHashes: string[]; id: string }[]) => {
+      document.querySelectorAll('.mapboxgl-popup').forEach((popup) => popup.remove());
+
       const groupedGeoHashes = geoHashes
         .flatMap(({ geoHashes, color }) =>
           geoHashes.map((hash) => ({
