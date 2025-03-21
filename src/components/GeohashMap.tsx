@@ -48,7 +48,7 @@ const GeoHashMap = () => {
   const fetchGeoHashesFromUrl = async (url: string) => {
     try {
       const response = await fetch(url, { cache: "no-store" });
-      return response.ok ? (await response.text()).trim().split("\n") : [];
+      return response.ok ? (await response.text()).trim().split("\n").filter((hash) => !!hash) : [];
     } catch {
       return [];
     }
@@ -62,7 +62,7 @@ const GeoHashMap = () => {
 
     if (urls) {
       const fetchedGeoHashes = await Promise.all(
-        urls.map(async (url) => fetchGeoHashesFromUrl(url))
+        urls.map(fetchGeoHashesFromUrl)
       );
       setGeoHashCount(
         fetchedGeoHashes.reduce((acc, curr) => acc + curr.length, 0)
